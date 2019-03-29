@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">MyAppone</string>
+    <string name="action_settings">Settings</string>
+    <string name="channel_name">notification_cn</string>
+    <string name="channel_description">c_desc</string>
+    <string name="notification_title">n_title</string>
+    <string name="notification_message">n_msg</string>
+    <string name="ticker_text">text_ticker</string>
+
+</resources>
