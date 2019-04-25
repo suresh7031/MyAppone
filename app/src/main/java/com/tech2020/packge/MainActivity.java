@@ -82,8 +82,6 @@ public class MainActivity extends Activity {
         }
     }
 
-
-
     @Override
     protected void onStop() {
         //stopService(new Intent(getBaseContext(), MyServiceone.class));

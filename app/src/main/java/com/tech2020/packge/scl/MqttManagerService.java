@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
@@ -39,11 +40,18 @@ public class MqttManagerService extends Service {
 
     private final Random mGenerator = new Random();
 
-    final String serverUri = "tcp://m10.cloudmqtt.com:15014";
+    String serverUri = "tcp://m10.cloudmqtt.com:15014";
+    String username = "qmtslniz";
+    String password = "57VE42P2hXAt";
 
     String clientId = "cl_";
-    final String subscriptionTopic = "example/d";
-    final String publishTopic = "example/p";
+    //final String subscriptionTopic = "example/d";
+    //String macaddress = MqttDataHandlrSevice.getMacID(getApplicationContext());
+  //  String cmdpublishTopic = "/homeautomation/testing/"+macaddress+"/cmdout";
+    String cmdsubscribeTopic = "/homeautomation/testing/";//+macaddress+"/cmdin";
+    String lastwilltopic = "/homeautomation/testing/";//+macaddress+"/lastwill";
+   // String unsolicpublishTopic = "/homeautomation/testing/"+macaddress+"/unsolic";
+
     final String publishMessage = "Hello World!";
 
     List lst;
@@ -108,7 +116,18 @@ public class MqttManagerService extends Service {
 
 
         ////////////////////////////////mqtt code below/////////////////////////
-        clientId +=  android.os.Build.MODEL;
+        String hostname=null;
+        String port=null;
+        SharedPreferences preferences=getSharedPreferences("MqttPref",MODE_PRIVATE);
+        if(preferences!=null) {
+            hostname = preferences.getString("host", null);
+            port = preferences.getString("port", null);
+            username = preferences.getString("username", null);
+            password = preferences.getString("password", null);
+        }
+
+        serverUri = "tcp://"+hostname+":"+port;
+        clientId +=  MqttDataHandlrSevice.getMacID(getApplicationContext());
         Log.d("mqttms", "client_id:"+clientId);
         mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), serverUri, clientId);
         mqttAndroidClient.setCallback(new MqttCallbackExtended() {
@@ -154,9 +173,10 @@ public class MqttManagerService extends Service {
         mqttConnectOptions.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1);
         mqttConnectOptions.setAutomaticReconnect(true);
         mqttConnectOptions.setCleanSession(false);
-
-        mqttConnectOptions.setUserName("qmtslniz");
-        mqttConnectOptions.setPassword(new String("57VE42P2hXAt").toCharArray());
+        String macaddress = MqttDataHandlrSevice.getMacID(getApplicationContext());
+        mqttConnectOptions.setWill(lastwilltopic+macaddress+"/lastwill",new String("mqtt disconnected from_:"+macaddress).getBytes(),0,true);
+        mqttConnectOptions.setUserName(username);
+        mqttConnectOptions.setPassword(new String(password).toCharArray());
 
         try {
             mqttAndroidClient.connect(mqttConnectOptions, null, new IMqttActionListener() {
@@ -168,8 +188,9 @@ public class MqttManagerService extends Service {
                     disconnectedBufferOptions.setPersistBuffer(false);
                     disconnectedBufferOptions.setDeleteOldestMessages(false);
                     mqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
-                    subscribeToTopic(subscriptionTopic);
-                    subscribeToTopic("clin");
+                    //subscribeToTopic();
+                    subscribeToTopic(cmdsubscribeTopic+MqttDataHandlrSevice.getMacID(getApplicationContext())+"/cmdin");
+                    //subscribeToTopic("http");
                     Log.d("mqttms","connect-success-mqtt");
                 }
 
@@ -195,7 +216,6 @@ public class MqttManagerService extends Service {
                     //stopSelf();
                     //System.exit(0);
                    // android.os.Process.killProcess(android.os.Process.myPid());
-
                 }
 
                 @Override
