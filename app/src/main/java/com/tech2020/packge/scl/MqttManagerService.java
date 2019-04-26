@@ -141,6 +141,7 @@ public class MqttManagerService extends Service {
             port = preferences.getString("port", null);
             username = preferences.getString("username", null);
             password = preferences.getString("password", null);
+            cmdsubscribeTopic = preferences.getString("req_topic", null);
         }
         //temporary credentials below for ssl test
       /*  hostname = "m10.cloudmqtt.com";

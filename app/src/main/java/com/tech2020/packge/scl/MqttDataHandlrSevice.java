@@ -254,12 +254,17 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
             String port=reader.getString("port");
             String username=reader.getString("username");
             String pass=reader.getString("password");
+            String req_topic=reader.getString("req_topic");
+            String resp_topic = reader.getString("resp_topic");
+            cmdsubscribeTopic = req_topic;
+            cmdpublishTopic = resp_topic;
             //get compared the credentials with already existing and decide whether to restart mqtt service or not below
             SharedPreferences pref = getApplicationContext().getSharedPreferences("MqttPref", 0); // 0 - for private mode
 
             if(pref.contains("host") && pref.contains("port") && pref.contains("username") && pref.contains("password")){
                 if (pref.getString("host", null).equals(host) || pref.getString("port", null).equals(port)
-                        || pref.getString("username", null).equals(username) || pref.getString("password", null).equals(pass)) {
+                        || pref.getString("username", null).equals(username) || pref.getString("password", null).equals(pass)
+                        || pref.getString("req_topic", null).equals(req_topic) || pref.getString("resp_topic", null).equals(resp_topic)) {
                     Log.d("mqdata", "no new Mqtt credentials\n" + res);
                     if(!restartMqttmService){ //if mqtt not started previously
                         restartMqttManagerService(restartMqttmService);
@@ -273,6 +278,8 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
                     editor.putString("port", port);
                     editor.putString("username", username);
                     editor.putString("password", pass);
+                    editor.putString("req_topic", req_topic);
+                    editor.putString("resp_topic", resp_topic);
                     editor.commit();
                     Log.d("mqdata", "restart check MqttManagerService_\n" + res);
                     restartMqttManagerService(restartMqttmService);
@@ -284,6 +291,8 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
                 editor.putString("port", port);
                 editor.putString("username", username);
                 editor.putString("password", pass);
+                editor.putString("req_topic",req_topic);
+                editor.putString("resp_topic", resp_topic);
                 editor.commit();
                 Log.d("mqdata", "restart check MqttManagerService_\n" + res);
                 restartMqttManagerService(restartMqttmService);
@@ -353,12 +362,12 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
         Log.d("mqdata","msg_arrived-mqtt, TOPIC:"+topic+", msg:"+new String(message.getPayload()));
         //Log.d("mqdata",""+mService.getRandomNumber());
 
-        if(topic.equals(cmdsubscribeTopic+getMacID(getApplicationContext())+"/cmdin")){
+     /*   if(topic.equals(cmdsubscribeTopic+getMacID(getApplicationContext())+"/cmdin")){
             String clin=new String(message.getPayload());
             String strArray[] = clin.split("\\s");
             mService.publishMessage(cmdpublishTopic+getMacID(getApplicationContext())+"/cmdout",sudoResult(clin));
-        }
-        else if(topic.equals(cmdsubscribeTopic+"server/"+getMacID(getApplicationContext()))){
+        }*/
+        if(topic.equals(cmdsubscribeTopic+"/"+getMacID(getApplicationContext()))){
             String data=new String(message.getPayload());
             try {
                 JSONObject jsonObject = new JSONObject(data);
@@ -379,8 +388,8 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
                         msg.put("status","failure");
                         msg.put("response", null);
                     }
-                    Log.i("json", "mqttPublish: "+msg.toString());
-                    mService.publishMessage(cmdpublishTopic+"client/"+clientmac, msg.toString());
+                    Log.i("json", "mqttPublishtopic: "+cmdpublishTopic+"/"+clientmac+"msg: "+msg.toString());
+                    mService.publishMessage(cmdpublishTopic+"/"+clientmac, msg.toString());
                 }else if(jsonObject.getString("type").equals("ping")){
                     String clientmac= jsonObject.getString("from");
                     String command = jsonObject.getString("command");
@@ -390,8 +399,8 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
                     msg.put("to", clientmac);
                     msg.put("command", command);
                     msg.put("response","Ping Success");
-                    Log.i("json", "mqttPublish: "+msg.toString());
-                    mService.publishMessage(cmdpublishTopic+"client/"+clientmac, msg.toString());
+                    Log.i("json", "mqttPublish, topic: "+cmdpublishTopic+"/"+clientmac+"msg: "+msg.toString());
+                    mService.publishMessage(cmdpublishTopic+"/"+clientmac, msg.toString());
                 }
             } catch (JSONException e) {
                 Log.i("json", "mqttOnDataArrived: not a valid json");
