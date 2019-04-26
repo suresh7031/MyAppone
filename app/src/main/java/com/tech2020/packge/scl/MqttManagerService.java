@@ -29,18 +29,35 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.List;
 import java.util.Random;
+
+import javax.net.SocketFactory;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 
 public class MqttManagerService extends Service {
 
     MqttAndroidClient mqttAndroidClient;
     String mqttManagerConnectionStatus="DISCONNECTED";
+    SSLSocketFactory socketFactory;
 
     private final Random mGenerator = new Random();
 
-    String serverUri = "tcp://m10.cloudmqtt.com:15014";
+    String serverUri = "ssl://m10.cloudmqtt.com:15014";
     String username = "qmtslniz";
     String password = "57VE42P2hXAt";
 
@@ -125,8 +142,14 @@ public class MqttManagerService extends Service {
             username = preferences.getString("username", null);
             password = preferences.getString("password", null);
         }
-
-        serverUri = "tcp://"+hostname+":"+port;
+        //temporary credentials below for ssl test
+      /*  hostname = "m10.cloudmqtt.com";
+        port = "25014";
+        username = preferences.getString("username", null);
+        password = preferences.getString("password", null);*/
+        //end here
+        serverUri = "ssl://"+hostname+":"+port;
+        Log.i("uri", ""+serverUri);
         clientId +=  MqttDataHandlrSevice.getMacID(getApplicationContext());
         Log.d("mqttms", "client_id:"+clientId);
         mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), serverUri, clientId);
@@ -177,6 +200,54 @@ public class MqttManagerService extends Service {
         mqttConnectOptions.setWill(lastwilltopic+macaddress+"/lastwill",new String("mqtt disconnected from_:"+macaddress).getBytes(),0,true);
         mqttConnectOptions.setUserName(username);
         mqttConnectOptions.setPassword(new String(password).toCharArray());
+      //  try {
+           // SocketFactory.SocketFactoryOptions socketFactoryOptions = new SocketFactory.SocketFactoryOptions();
+           // socketFactory = SSLContext.getDefault().getSocketFactory();
+       //     Log.i("ssl", "try block");
+
+        try {
+
+            // Load CAs from an InputStream
+            // (could be from a resource or ByteArrayInputStream or ...)
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            // From https://www.washington.edu/itconnect/security/ca/load-der.crt
+            InputStream is = getApplicationContext().getResources().getAssets().open("m2mqtt_ca.crt");
+            InputStream caInput = new BufferedInputStream(is);
+            Certificate ca;
+            try {
+                ca = cf.generateCertificate(caInput);
+                // System.out.println("ca=" + ((X509Certificate) ca).getSubjectDN());
+            } finally {
+                caInput.close();
+            }
+
+            // Create a KeyStore containing our trusted CAs
+            String keyStoreType = KeyStore.getDefaultType();
+            KeyStore keyStore = KeyStore.getInstance(keyStoreType);
+            keyStore.load(null, null);
+            keyStore.setCertificateEntry("ca", ca);
+
+            // Create a TrustManager that trusts the CAs in our KeyStore
+            String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
+            tmf.init(keyStore);
+
+            // Create an SSLContext that uses our TrustManager
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(null, tmf.getTrustManagers(), null);
+            mqttConnectOptions.setSocketFactory(context.getSocketFactory());
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         try {
             mqttAndroidClient.connect(mqttConnectOptions, null, new IMqttActionListener() {
