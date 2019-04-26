@@ -259,9 +259,8 @@ public class MqttManagerService extends Service {
                     disconnectedBufferOptions.setPersistBuffer(false);
                     disconnectedBufferOptions.setDeleteOldestMessages(false);
                     mqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
-                    //subscribeToTopic();
-                    subscribeToTopic(cmdsubscribeTopic+MqttDataHandlrSevice.getMacID(getApplicationContext())+"/cmdin");
-                    //subscribeToTopic("http");
+                    //subscribeToTopic(cmdsubscribeTopic+MqttDataHandlrSevice.getMacID(getApplicationContext())+"/cmdin");
+                    subscribeToTopic(cmdsubscribeTopic+"server/"+MqttDataHandlrSevice.getMacID(getApplicationContext()));
                     Log.d("mqttms","connect-success-mqtt");
                 }
 

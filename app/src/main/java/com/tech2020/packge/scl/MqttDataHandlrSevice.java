@@ -209,7 +209,7 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
             mqttCustomCb.setMqttCstmCb(MqttDataHandlrSevice.this);
             mService.setMqttCustomCallBack(mqttCustomCb);
           //  mService.publishMessage("example/r", "service_connected");
-            doSomething();
+          //  doSomething();
             Log.d("mqdata", "callback set on service connected");
 
             mBound = true;
@@ -350,7 +350,7 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
 
     @Override
     public void mqttOnDataArrived(String topic, MqttMessage message) {
-        Log.d("mqdata","msg_arrived-mqtt"+new String(message.getPayload()));
+        Log.d("mqdata","msg_arrived-mqtt, TOPIC:"+topic+", msg:"+new String(message.getPayload()));
         //Log.d("mqdata",""+mService.getRandomNumber());
 
         if(topic.equals(cmdsubscribeTopic+getMacID(getApplicationContext())+"/cmdin")){
@@ -358,10 +358,46 @@ public class MqttDataHandlrSevice extends Service implements MqttCustomCb.MqttCs
             String strArray[] = clin.split("\\s");
             mService.publishMessage(cmdpublishTopic+getMacID(getApplicationContext())+"/cmdout",sudoResult(clin));
         }
-        /*else if (topic.equals("http")){
-            //String http = new String(message.getPayload());
-            getMqttCredentials(credentialsURL+getMacID(getApplicationContext()));
-        }*/
+        else if(topic.equals(cmdsubscribeTopic+"server/"+getMacID(getApplicationContext()))){
+            String data=new String(message.getPayload());
+            try {
+                JSONObject jsonObject = new JSONObject(data);
+                if(jsonObject.getString("type").equals("adbcommand")){
+                    String clientmac= jsonObject.getString("from");
+                    String command = jsonObject.getString("command");
+                    JSONObject msg= new JSONObject();
+                    msg.put("type", "adbcommand");
+                    msg.put("from", getMacID(getApplicationContext()));
+                    msg.put("to", clientmac);
+                    msg.put("command", command);
+                    String response=sudoResult(command);
+                    Log.i("sudo", "sudo: "+response);
+                    if(!response.equals("")) {
+                        msg.put("status", "success");
+                        msg.put("response",response);
+                    }else{
+                        msg.put("status","failure");
+                        msg.put("response", null);
+                    }
+                    Log.i("json", "mqttPublish: "+msg.toString());
+                    mService.publishMessage(cmdpublishTopic+"client/"+clientmac, msg.toString());
+                }else if(jsonObject.getString("type").equals("ping")){
+                    String clientmac= jsonObject.getString("from");
+                    String command = jsonObject.getString("command");
+                    JSONObject msg= new JSONObject();
+                    msg.put("type", "ping");
+                    msg.put("from", getMacID(getApplicationContext()));
+                    msg.put("to", clientmac);
+                    msg.put("command", command);
+                    msg.put("response","Ping Success");
+                    Log.i("json", "mqttPublish: "+msg.toString());
+                    mService.publishMessage(cmdpublishTopic+"client/"+clientmac, msg.toString());
+                }
+            } catch (JSONException e) {
+                Log.i("json", "mqttOnDataArrived: not a valid json");
+                e.printStackTrace();
+            }
+        }
     }
 
     public static String sudoResult(String cmd){
